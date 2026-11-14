@@ -1,9 +1,10 @@
-# One-click hosting on Render (https://render.com). See "Put it online" in README.md.
+# Free hosting on Render (https://render.com). See "Put it online" in README.md.
+# Bookings are stored in a free Turso database (turso.tech), so they survive restarts.
 services:
   - type: web
     name: shadab-dental-care
     runtime: node
-    plan: starter            # paid plan (~$7/month) so the bookings disk below is kept safely
+    plan: free
     buildCommand: echo "no build needed"
     startCommand: node server.js
     healthCheckPath: /
@@ -14,11 +15,9 @@ services:
         value: 0.0.0.0
       - key: TRUST_PROXY
         value: "1"
-      - key: DB_PATH
-        value: /var/data/appointments.sqlite
       - key: ADMIN_KEY
         generateValue: true  # your staff password; see it in Render > Environment
-    disk:
-      name: bookings
-      mountPath: /var/data
-      sizeGB: 1
+      - key: TURSO_DATABASE_URL
+        sync: false          # paste from Turso when Render asks
+      - key: TURSO_AUTH_TOKEN
+        sync: false          # paste from Turso when Render asks

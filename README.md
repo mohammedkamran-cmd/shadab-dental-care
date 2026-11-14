@@ -69,11 +69,18 @@ To choose your own key, start the server with `$env:ADMIN_KEY="your-long-secret"
 - Lookups and cancellations need **both** the reference and the phone number.
 - Basic per-IP rate limiting on booking, lookup and staff requests.
 
-## Before going live with real patients
+## Put it online (free)
 
-1. Fill in `clinic.json` with confirmed details and real hours.
-2. Host it behind **HTTPS** (e.g. a VPS with Caddy/Nginx, or any Node host that keeps the `data/` folder between restarts). Set `HOST=0.0.0.0` so the server accepts outside connections.
-3. Back up `data/appointments.sqlite` regularly, and keep it and `data/admin-key.txt` private.
-4. Check local privacy rules for storing patient contact details.
+The site runs on **Render's free plan**, and bookings are kept in a free **Turso** database, so they survive restarts.
+`render.yaml` holds the whole Render setup.
 
-Settings via environment variables: `PORT` (default 3000), `HOST` (default 127.0.0.1), `DB_PATH`, `ADMIN_KEY`.
+1. Turso (https://turso.tech): sign up and create a database. Copy its **URL** (`libsql://…`) and create a **token**.
+2. Render (https://render.com): **New → Blueprint**, then pick this GitHub repository. When asked, paste
+   `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`.
+3. Your link is `https://<service-name>.onrender.com`. The staff password is `ADMIN_KEY` under Render → Environment.
+
+On the free plan the site goes to sleep after 15 minutes without visitors, so the next visit takes about a minute to load.
+Every `git push` to GitHub redeploys the site automatically. Edit `clinic.json` and push to change details.
+
+Settings via environment variables: `PORT` (default 3000), `HOST` (default 127.0.0.1), `DB_PATH`, `ADMIN_KEY`,
+`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `TRUST_PROXY` (set to 1 behind a hosting proxy).

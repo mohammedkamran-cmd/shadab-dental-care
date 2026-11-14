@@ -15,10 +15,38 @@ const DB_PATH = process.env.DB_PATH || path.join(ROOT, 'data', 'appointments.sql
 const KEY_PATH = path.join(path.dirname(DB_PATH), 'admin-key.txt');
 
 // ---------- database ----------
+// Local SQLite file by default. If TURSO_DATABASE_URL + TURSO_AUTH_TOKEN are set (free online
+// database at turso.tech), bookings are stored there instead, so they survive restarts on free hosting.
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-const db = new DatabaseSync(DB_PATH);
-db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
-CREATE TABLE IF NOT EXISTS appointments (
+const TURSO_URL = (process.env.TURSO_DATABASE_URL || '').trim().replace(/^libsql:\/\//, 'https://').replace(/\/$/, '');
+const TURSO_TOKEN = (process.env.TURSO_AUTH_TOKEN || '').trim();
+const local = TURSO_URL ? null : new DatabaseSync(DB_PATH);
+const toArg = v => v == null ? { type: 'null' }
+  : typeof v === 'number' ? (Number.isInteger(v) ? { type: 'integer', value: String(v) } : { type: 'float', value: v })
+  : { type: 'text', value: String(v) };
+async function remote(stmts) {
+  const res = await fetch(`${TURSO_URL}/v2/pipeline`, {
+    method: 'POST', signal: AbortSignal.timeout(15000),
+    headers: { Authorization: `Bearer ${TURSO_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests: [...stmts.map(([sql, args = []]) => ({ type: 'execute', stmt: { sql, args: args.map(toArg) } })), { type: 'close' }] })
+  });
+  if (!res.ok) throw new Error(`Database error ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  return data.results.slice(0, stmts.length).map(r => {
+    if (r.type !== 'ok') throw new Error(r.error?.message || 'Database error');
+    const x = r.response.result;
+    return x.rows.map(row => Object.fromEntries(row.map((c, i) => [x.cols[i].name, c.type === 'null' ? null : c.type === 'integer' ? Number(c.value) : c.value])));
+  });
+}
+const db = {
+  async all(sql, ...args) { return local ? local.prepare(sql).all(...args) : (await remote([[sql, args]]))[0]; },
+  async get(sql, ...args) { return (await db.all(sql, ...args))[0]; },
+  async run(sql, ...args) { if (local) local.prepare(sql).run(...args); else await remote([[sql, args]]); },
+  async exec(sql) { if (local) local.exec(sql); else await remote([[sql]]); }
+};
+async function initDb() {
+  if (local) local.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
+  await db.exec(`CREATE TABLE IF NOT EXISTS appointments (
   id INTEGER PRIMARY KEY,
   reference TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
@@ -31,14 +59,17 @@ CREATE TABLE IF NOT EXISTS appointments (
   status TEXT NOT NULL DEFAULT 'confirmed',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT
-);`);
-// Upgrade databases created by the earlier version of this project.
-const cols = new Set(db.prepare('PRAGMA table_info(appointments)').all().map(c => c.name));
-if (!cols.has('status')) db.exec("ALTER TABLE appointments ADD COLUMN status TEXT NOT NULL DEFAULT 'confirmed'");
-if (!cols.has('reason')) db.exec('ALTER TABLE appointments ADD COLUMN reason TEXT');
-if (!cols.has('updated_at')) db.exec('ALTER TABLE appointments ADD COLUMN updated_at TEXT');
-// Only one *confirmed* booking per slot; cancelled bookings free the slot.
-db.exec("CREATE UNIQUE INDEX IF NOT EXISTS one_booking_per_slot ON appointments(visit_date, visit_time) WHERE status='confirmed'");
+)`);
+  // Upgrade databases created by the earlier version of this project.
+  const cols = new Set((await db.all('PRAGMA table_info(appointments)')).map(c => c.name));
+  if (!cols.has('status')) await db.exec("ALTER TABLE appointments ADD COLUMN status TEXT NOT NULL DEFAULT 'confirmed'");
+  if (!cols.has('reason')) await db.exec('ALTER TABLE appointments ADD COLUMN reason TEXT');
+  if (!cols.has('updated_at')) await db.exec('ALTER TABLE appointments ADD COLUMN updated_at TEXT');
+  // Only one *confirmed* booking per slot; cancelled bookings free the slot. This also blocks double-booking.
+  await db.exec("CREATE UNIQUE INDEX IF NOT EXISTS one_booking_per_slot ON appointments(visit_date, visit_time) WHERE status='confirmed'");
+}
+const ready = initDb();
+ready.catch(() => {}); // reported at startup; requests then show a friendly error instead of crashing
 
 // ---------- admin key ----------
 let ADMIN_KEY = process.env.ADMIN_KEY || '';
@@ -159,14 +190,18 @@ function inWindow(date, c) {
   const w = bookingWindow(c);
   return validDate(date) && date >= w.min && date <= w.max;
 }
-function slotsFor(date, c) {
+async function slotsFor(date, c) {
+  if (!validDate(date)) return [];
+  const rows = await db.all("SELECT visit_time FROM appointments WHERE visit_date=? AND status='confirmed'", date);
+  return freeSlots(date, c, new Set(rows.map(x => x.visit_time)));
+}
+function freeSlots(date, c, booked) {
   if (!validDate(date) || (c.closedDates || []).includes(date)) return [];
   const hours = c.weeklyHours?.[String(new Date(`${date}T12:00:00`).getDay())];
   if (!Array.isArray(hours) || hours.length !== 2) return [];
   const [start, end] = hours.map(toMinutes);
   const size = Number(c.slotMinutes);
   if (![start, end, size].every(Number.isFinite) || size < 10 || size > 180 || end <= start) return [];
-  const booked = new Set(db.prepare("SELECT visit_time FROM appointments WHERE visit_date=? AND status='confirmed'").all(date).map(x => x.visit_time));
   const now = new Date();
   const out = [];
   for (let t = start; t + size <= end; t += size) {
@@ -191,11 +226,13 @@ function limited(key, max = 12) {
 setInterval(() => { const cut = Date.now() - 15 * 60 * 1000; for (const [k, v] of limits) if (v.at < cut) limits.delete(k); }, 60 * 1000).unref();
 
 const publicRow = r => ({ reference: r.reference, name: r.name, date: r.visit_date, time: r.visit_time, reason: r.reason || '', concern: r.concern, status: r.status });
-function findOwned(body) {
+async function findOwned(body) {
   const reference = clean(body.reference, 20).toUpperCase();
   const phone = clean(body.phone, 30);
-  const row = db.prepare('SELECT * FROM appointments WHERE reference=?').get(reference);
-  if (!row || !digits(phone) || digits(row.phone) !== digits(phone)) return null;
+  const row = await db.get('SELECT * FROM appointments WHERE reference=?', reference);
+  // Compare the last 10 digits so "+91 90000 11111" matches "9000011111".
+  const norm = p => digits(p).slice(-10);
+  if (!row || digits(phone).length < 7 || norm(row.phone) !== norm(phone)) return null;
   return row;
 }
 
@@ -212,18 +249,23 @@ async function api(req, res, url) {
     const c = config();
     const date = url.searchParams.get('date') || '';
     if (!inWindow(date, c)) return send(res, 400, { error: `Choose a date within the next ${c.bookingDaysAhead || 90} days.` });
-    return send(res, 200, { slots: slotsFor(date, c) });
+    return send(res, 200, { slots: await slotsFor(date, c) });
   }
 
   if (route === 'GET /api/open-days') {
-    // Next N days that have at least one free slot (used for quick date chips).
+    // Next N days that have at least one free slot (used for quick date chips). One database read.
     const c = config();
     const w = bookingWindow(c);
+    const bookedByDay = new Map();
+    for (const r of await db.all("SELECT visit_date, visit_time FROM appointments WHERE status='confirmed' AND visit_date BETWEEN ? AND ?", w.min, w.max)) {
+      if (!bookedByDay.has(r.visit_date)) bookedByDay.set(r.visit_date, new Set());
+      bookedByDay.get(r.visit_date).add(r.visit_time);
+    }
     const out = [];
     const d = new Date();
     while (out.length < 10 && dateText(d) <= w.max) {
       const s = dateText(d);
-      const n = slotsFor(s, c).length;
+      const n = freeSlots(s, c, bookedByDay.get(s) || new Set()).length;
       if (n) out.push({ date: s, free: n });
       d.setDate(d.getDate() + 1);
     }
@@ -243,18 +285,15 @@ async function api(req, res, url) {
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { error: 'Please enter a valid email address, or leave it blank.' });
     if (concern.length < 5) return send(res, 400, { error: 'Please add a short description of what you need.' });
     if (b.consent !== true) return send(res, 400, { error: 'Please tick the box to confirm you agree to share these details.' });
-    if (!inWindow(date, c) || !/^\d{2}:\d{2}$/.test(time) || !slotsFor(date, c).includes(time)) {
+    if (!inWindow(date, c) || !/^\d{2}:\d{2}$/.test(time) || !(await slotsFor(date, c)).includes(time)) {
       return send(res, 409, { error: 'That time is no longer available. Please choose another slot.' });
     }
     const reference = crypto.randomBytes(5).toString('hex').toUpperCase();
     try {
-      db.exec('BEGIN IMMEDIATE');
-      if (!slotsFor(date, c).includes(time)) { db.exec('ROLLBACK'); return send(res, 409, { error: 'That time was just booked. Please choose another slot.' }); }
-      db.prepare('INSERT INTO appointments(reference,name,phone,email,visit_date,visit_time,reason,concern) VALUES(?,?,?,?,?,?,?,?)')
-        .run(reference, name, phone, email || null, date, time, reason || null, concern);
-      db.exec('COMMIT');
+      // The unique index on (date, time) for confirmed bookings rejects a simultaneous double-booking.
+      await db.run('INSERT INTO appointments(reference,name,phone,email,visit_date,visit_time,reason,concern) VALUES(?,?,?,?,?,?,?,?)',
+        reference, name, phone, email || null, date, time, reason || null, concern);
     } catch (e) {
-      try { db.exec('ROLLBACK'); } catch {}
       if (String(e).includes('UNIQUE')) return send(res, 409, { error: 'That time was just booked. Please choose another slot.' });
       throw e;
     }
@@ -267,7 +306,7 @@ async function api(req, res, url) {
     if (limited('look:' + ip, 20)) return send(res, 429, { error: 'Too many attempts. Please try again in 15 minutes.' });
     let b;
     try { b = await readBody(req); } catch { return send(res, 400, { error: 'Enter your reference and phone number.' }); }
-    const row = findOwned(b);
+    const row = await findOwned(b);
     if (!row) return send(res, 404, { error: 'No appointment matched those details. Check the reference and the phone number you booked with.' });
     return send(res, 200, publicRow(row));
   }
@@ -276,10 +315,10 @@ async function api(req, res, url) {
     if (limited('look:' + ip, 20)) return send(res, 429, { error: 'Too many attempts. Please try again in 15 minutes.' });
     let b;
     try { b = await readBody(req); } catch { return send(res, 400, { error: 'Enter your reference and phone number.' }); }
-    const row = findOwned(b);
+    const row = await findOwned(b);
     if (!row) return send(res, 404, { error: 'No appointment matched those details.' });
     if (row.status !== 'confirmed') return send(res, 409, { error: 'This appointment is not active, so it cannot be cancelled.' });
-    db.prepare("UPDATE appointments SET status='cancelled', updated_at=datetime('now') WHERE id=?").run(row.id);
+    await db.run("UPDATE appointments SET status='cancelled', updated_at=datetime('now') WHERE id=?", row.id);
     console.log(`[cancel] ${row.reference} by patient`);
     sendAlert(cancelAlert(row)).catch(() => {});
     return send(res, 200, publicRow({ ...row, status: 'cancelled' }));
@@ -298,7 +337,7 @@ async function api(req, res, url) {
       if (validDate(from)) { where.push('visit_date >= ?'); args.push(from); }
       if (validDate(to)) { where.push('visit_date <= ?'); args.push(to); }
       if (['confirmed', 'cancelled', 'completed', 'no-show'].includes(status)) { where.push('status = ?'); args.push(status); }
-      const rows = db.prepare(`SELECT reference,name,phone,email,visit_date AS date,visit_time AS time,reason,concern,status,created_at FROM appointments ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY visit_date, visit_time LIMIT 1000`).all(...args);
+      const rows = await db.all(`SELECT reference,name,phone,email,visit_date AS date,visit_time AS time,reason,concern,status,created_at FROM appointments ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY visit_date, visit_time LIMIT 1000`, ...args);
       return send(res, 200, { appointments: rows });
     }
 
@@ -313,10 +352,10 @@ async function api(req, res, url) {
       let b;
       try { b = await readBody(req); } catch { return send(res, 400, { error: 'Bad request.' }); }
       if (!['confirmed', 'cancelled', 'completed', 'no-show'].includes(b.status)) return send(res, 400, { error: 'Unknown status.' });
-      const row = db.prepare('SELECT * FROM appointments WHERE reference=?').get(m[1]);
+      const row = await db.get('SELECT * FROM appointments WHERE reference=?', m[1]);
       if (!row) return send(res, 404, { error: 'Appointment not found.' });
       try {
-        db.prepare("UPDATE appointments SET status=?, updated_at=datetime('now') WHERE id=?").run(b.status, row.id);
+        await db.run("UPDATE appointments SET status=?, updated_at=datetime('now') WHERE id=?", b.status, row.id);
       } catch (e) {
         if (String(e).includes('UNIQUE')) return send(res, 409, { error: 'Another confirmed booking already holds that slot.' });
         throw e;
@@ -343,7 +382,7 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src https://www.google.com https://maps.google.com; frame-ancestors 'none'");
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-    if (url.pathname.startsWith('/api/')) return await api(req, res, url);
+    if (url.pathname.startsWith('/api/')) { await ready; return await api(req, res, url); }
     if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
 
     if (url.pathname === '/clinic-config.js') {
@@ -370,7 +409,9 @@ if (require.main === module) {
     console.log(`\n  Shadab Dental Care is running:  http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
     console.log(`  Clinic staff page:              http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/admin`);
     console.log(`  Staff key: ${process.env.ADMIN_KEY ? '(from ADMIN_KEY)' : 'saved in ' + path.relative(ROOT, KEY_PATH)}`);
-    console.log(`  Booking alerts: ${notifyStatus()}\n`);
+    console.log(`  Booking alerts: ${notifyStatus()}`);
+    console.log(`  Bookings stored in: ${TURSO_URL ? 'Turso online database' : path.relative(ROOT, DB_PATH)}\n`);
+    ready.catch(e => console.error('  DATABASE PROBLEM:', e.message));
   });
 }
 module.exports = { server, db };
