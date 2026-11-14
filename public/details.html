@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f5f4ef">
+<meta name="description" content="Check or cancel your Shadab Dental Care appointment with your booking reference and phone number.">
+<title>My appointment | Shadab Dental Care</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="header"><div class="wrap">
+  <a class="brand" href="/" aria-label="Shadab Dental Care home"><svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="#163d36"/><path d="M10.6 11c2-1.7 4.2-.7 6.4.3 2.2-1 4.4-2 6.4-.3 2.2 1.9 1.6 5.8.6 8.6-.9 2.5-1.1 6.2-2.8 6.2-1.9 0-1.5-4.6-4.2-4.6s-2.3 4.6-4.2 4.6c-1.7 0-1.9-3.7-2.8-6.2-1-2.8-1.6-6.7.6-8.6z" fill="none" stroke="#f5f4ef" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Shadab <b>Dental Care</b></span></a>
+  <nav class="nav" id="nav" aria-label="Main"><a href="/">Home</a><a href="/about">About</a><a href="/#visit">Hours &amp; contact</a><a href="/booking">Book</a><a href="/details" aria-current="page">My appointment</a></nav>
+  <div class="header-actions"><a class="button button-dark button-sm header-cta" href="/booking">Book a visit <span class="arrow">↗</span></a><button class="menu-toggle" type="button" aria-controls="nav" aria-expanded="false" aria-label="Open menu">☰</button></div>
+</div></header>
+
+<main id="main" class="subpage wrap">
+  <div class="breadcrumb"><a href="/">Home</a><span>/</span>My appointment</div>
+  <div class="subhead">
+    <div><div class="eyebrow">Your booking, anytime</div><h1>Check your <em>appointment.</em></h1></div>
+    <p>Enter the booking reference from your confirmation and the phone number you booked with. You can view the details or cancel if your plans change.</p>
+  </div>
+  <div class="lookup-grid">
+    <form id="lookupForm" class="card form-card" novalidate>
+      <div class="form-step"><span>✳</span><div><h2>Find your booking</h2><p>Your reference has 10 characters, like A1B2C3D4E5.</p></div></div>
+      <div class="field"><label for="reference">Booking reference <b>*</b></label><input id="reference" name="reference" autocomplete="off" autocapitalize="characters" spellcheck="false" minlength="10" maxlength="10" required placeholder="e.g. A1B2C3D4E5" style="font-family:ui-monospace,Consolas,monospace;letter-spacing:.08em"></div>
+      <div class="field"><label for="phone">Phone number used to book <b>*</b></label><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" minlength="7" required placeholder="The number you entered when booking"></div>
+      <div class="form-error" id="lookupError" role="alert" hidden></div>
+      <button class="button button-dark submit-button" type="submit">View appointment <span class="arrow">↗</span></button>
+      <p class="footnote" style="text-align:center">For your privacy, both details must match.</p>
+    </form>
+    <div>
+      <div class="empty-art" id="lookupEmpty"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><rect x="10" y="14" width="44" height="40" rx="6"/><path d="M10 26h44M22 8v12M42 8v12"/><path d="m25 40 5 5 10-10" stroke-linecap="round" stroke-linejoin="round"/></svg><p style="margin:0">Your appointment details will appear here.</p><a class="text-link" href="/booking">Don’t have a booking yet? Book now ↗</a></div>
+      <section id="appointmentResult" class="result" aria-live="polite" hidden></section>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-main">
+    <div><a class="brand" href="/"><svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="#f1eee2"/><path d="M10.6 11c2-1.7 4.2-.7 6.4.3 2.2-1 4.4-2 6.4-.3 2.2 1.9 1.6 5.8.6 8.6-.9 2.5-1.1 6.2-2.8 6.2-1.9 0-1.5-4.6-4.2-4.6s-2.3 4.6-4.2 4.6c-1.7 0-1.9-3.7-2.8-6.2-1-2.8-1.6-6.7.6-8.6z" fill="none" stroke="#12332c" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Shadab <b>Dental Care</b></span></a><p class="footer-blurb">Gentle, unhurried dental care — with time for your questions.</p></div>
+    <div class="footer-col"><span class="footer-label">Explore</span><a href="/about">About &amp; FAQ</a><a href="/booking">Book an appointment</a><a href="/details">My appointment</a><a href="/about#privacy">Privacy</a></div>
+    <div class="footer-col"><span class="footer-label">Visit</span><span data-c="address"></span><a data-c="phone" href="#"></a><a data-c="email" href="#"></a><span data-c-pending>Contact details coming soon</span></div>
+  </div>
+  <div class="wrap footer-bottom"><span>© <span data-year></span> Shadab Dental Care</span><span>Not for emergencies — in urgent cases call your local emergency number.</span></div>
+</footer>
+<script src="/clinic-config.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

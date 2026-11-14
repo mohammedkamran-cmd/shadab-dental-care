@@ -1,0 +1,25 @@
+{
+  "_help": "Edit these values with clinic-approved details, then restart the server. Leave a value as \"\" to hide it on the site. weeklyHours uses JavaScript weekday numbers: 0 Sunday, 1 Monday ... 6 Saturday. Times use the server's local timezone.",
+  "name": "Shadab Dental Care",
+  "tagline": "Gentle, unhurried dental care",
+  "doctor": "",
+  "credentials": "",
+  "bio": "",
+  "address": "",
+  "phone": "+91 62003 52125",
+  "whatsapp": "",
+  "email": "",
+  "mapUrl": "",
+  "scheduleIsSample": true,
+  "slotMinutes": 30,
+  "bookingDaysAhead": 90,
+  "weeklyHours": {
+    "1": ["09:00", "17:00"],
+    "2": ["09:00", "17:00"],
+    "3": ["09:00", "17:00"],
+    "4": ["09:00", "17:00"],
+    "5": ["09:00", "17:00"],
+    "6": ["10:00", "14:00"]
+  },
+  "closedDates": []
+}

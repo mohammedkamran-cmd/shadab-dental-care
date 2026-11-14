@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Clinic bookings | Shadab Dental Care</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="header"><div class="wrap">
+  <a class="brand" href="/" aria-label="Shadab Dental Care home"><svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="#163d36"/><path d="M10.6 11c2-1.7 4.2-.7 6.4.3 2.2-1 4.4-2 6.4-.3 2.2 1.9 1.6 5.8.6 8.6-.9 2.5-1.1 6.2-2.8 6.2-1.9 0-1.5-4.6-4.2-4.6s-2.3 4.6-4.2 4.6c-1.7 0-1.9-3.7-2.8-6.2-1-2.8-1.6-6.7.6-8.6z" fill="none" stroke="#f5f4ef" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Shadab <b>Dental Care</b> · Staff</span></a>
+  <div class="header-actions"><button class="button button-ghost button-sm" id="logout" type="button" hidden>Sign out</button></div>
+</div></header>
+
+<main class="subpage wrap">
+  <form id="login" class="card form-card login-card">
+    <div class="form-step"><span>✳</span><div><h2>Clinic staff sign-in</h2><p>Enter the staff key shown when the server started (saved in <code>data/admin-key.txt</code>).</p></div></div>
+    <div class="field"><label for="key">Staff key</label><input id="key" type="password" autocomplete="current-password" required></div>
+    <div class="form-error" id="loginError" role="alert" hidden></div>
+    <button class="button button-dark submit-button" type="submit">Open bookings</button>
+  </form>
+
+  <section id="dash" hidden>
+    <div class="subhead" style="padding-top:20px;padding-bottom:28px">
+      <div><div class="eyebrow">Clinic dashboard</div><h1 style="font-size:clamp(38px,5vw,56px)">Appointments</h1></div>
+      <p>See who’s coming in, mark visits as completed or missed, and cancel bookings. Changes take effect immediately.</p>
+    </div>
+    <div class="stats">
+      <div class="card stat"><small>Today</small><strong id="sToday">–</strong></div>
+      <div class="card stat"><small>Next 7 days</small><strong id="sWeek">–</strong></div>
+      <div class="card stat"><small>All upcoming</small><strong id="sUpcoming">–</strong></div>
+      <div class="card stat"><small>Cancelled (shown)</small><strong id="sCancelled">–</strong></div>
+    </div>
+    <div class="card" style="padding:18px 20px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between">
+      <div><small class="eyebrow">Booking alerts</small><div id="notifyStatus" style="font-weight:600;margin-top:4px">Checking…</div><div id="notifyResult" class="footnote" style="margin-top:4px"></div></div>
+      <button class="button button-ghost button-sm" id="notifyTest" type="button">Send test message</button>
+    </div>
+    <div class="admin-bar">
+      <div class="field"><label for="from">From</label><input id="from" type="date"></div>
+      <div class="field"><label for="to">To</label><input id="to" type="date"></div>
+      <div class="field"><label for="status">Status</label><select id="status"><option value="">All</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="no-show">No-show</option><option value="cancelled">Cancelled</option></select></div>
+      <div class="field"><label for="q">Search</label><input id="q" type="search" placeholder="Name, phone, reference"></div>
+      <button class="button button-ghost button-sm" id="refresh" type="button">Refresh</button>
+      <button class="button button-dark button-sm" id="csv" type="button">Export CSV</button>
+    </div>
+    <div class="form-error" id="dashError" role="alert" hidden></div>
+    <div class="card table-wrap">
+      <table class="table">
+        <thead><tr><th>Time</th><th>Patient</th><th>Contact</th><th>Reason &amp; note</th><th>Reference</th><th>Status</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="6">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<script src="/admin.js"></script>
+</body>
+</html>
