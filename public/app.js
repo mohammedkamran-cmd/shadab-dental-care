@@ -51,6 +51,11 @@
     nav.addEventListener('click', e => { if (e.target.closest('a')) { nav.classList.remove('open'); toggle.setAttribute('aria-expanded', 'false'); toggle.textContent = '☰'; } });
   }
 
+  // Static GitHub Pages build (mode "whatsapp"): there is no server, so a booking is sent as a WhatsApp message.
+  const WA = C.mode === 'whatsapp';
+  $$('[data-mode="server"]').forEach(n => (n.hidden = WA));
+  $$('[data-mode="whatsapp"]').forEach(n => (n.hidden = !WA));
+
   const has = k => typeof C[k] === 'string' && C[k].trim() && !C[k].includes('[');
   const links = {
     phone: v => `tel:${v.replace(/[^+\d]/g, '')}`,
@@ -104,7 +109,8 @@
 
   // ---------- next available (home hero) ----------
   const nextCard = $('#nextAvailable');
-  if (nextCard) {
+  if (nextCard && WA) nextCard.hidden = true; // live availability needs the server
+  else if (nextCard) {
     api('/api/open-days').then(async ({ days }) => {
       if (!days.length) { $('strong', nextCard).textContent = 'Call to arrange a time'; return; }
       const { slots } = await api(`/api/slots?date=${days[0].date}`);
@@ -147,13 +153,30 @@
 
     concern.addEventListener('input', () => (counter.textContent = concern.value.length));
 
+    // WhatsApp mode: build the times from the opening hours; the clinic confirms the exact time in the chat.
+    const hhmm = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+    const localSlots = date => {
+      const h = (C.weeklyHours || {})[asDate(date).getDay()];
+      const size = Number(C.slotMinutes) || 30;
+      if (!h || (C.closedDates || []).includes(date)) return [];
+      const [s, e] = h.map(x => Number(x.slice(0, 2)) * 60 + Number(x.slice(3)));
+      const out = [], now = new Date();
+      for (let t = s; t + size <= e; t += size) if (new Date(`${date}T${hhmm(t)}:00`) > now) out.push(hhmm(t));
+      return out;
+    };
+    const localDays = () => {
+      const out = [], d = new Date();
+      for (let i = 0; i < days && out.length < 10; i++, d.setDate(d.getDate() + 1)) if (localSlots(iso(d)).length) out.push({ date: iso(d) });
+      return out;
+    };
+
     async function loadSlots() {
       time.value = ''; updateSummary();
       $$('.chip', dayChips).forEach(x => x.setAttribute('aria-pressed', String(x.dataset.date === dateInput.value)));
       if (!dateInput.value) { slots.replaceChildren(el('p', { class: 'muted', text: 'Pick a day above to see open times.' })); return; }
       slots.replaceChildren(el('p', { class: 'muted', text: 'Checking open times…' }));
       try {
-        const data = await api(`/api/slots?date=${encodeURIComponent(dateInput.value)}`);
+        const data = WA ? { slots: localSlots(dateInput.value) } : await api(`/api/slots?date=${encodeURIComponent(dateInput.value)}`);
         if (!data.slots.length) { slots.replaceChildren(el('p', { class: 'muted', text: `No open times on ${fmtDate(dateInput.value, { weekday: 'long', day: 'numeric', month: 'long' })}. Please try another day.` })); return; }
         const groups = [['Morning', t => t < '12:00'], ['Afternoon', t => t >= '12:00' && t < '17:00'], ['Evening', t => t >= '17:00']];
         const out = [];
@@ -171,7 +194,7 @@
     }
     dateInput.addEventListener('change', loadSlots);
 
-    api('/api/open-days').then(({ days }) => {
+    (WA ? Promise.resolve({ days: localDays() }) : api('/api/open-days')).then(({ days }) => {
       dayChips.replaceChildren(...days.slice(0, 6).map(d => el('button', {
         type: 'button', class: 'chip day-chip', 'data-date': d.date, 'aria-pressed': 'false',
         onclick: () => { dateInput.value = d.date; loadSlots(); }
@@ -186,6 +209,24 @@
       error.hidden = true;
       if (!dateInput.value || !time.value) { error.textContent = 'Please choose a day and an open time first.'; error.hidden = false; $('#whenTitle').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
       if (!form.reportValidity()) return;
+      if (WA) {
+        let num = (C.whatsapp || '').replace(/\D/g, '');
+        if (num.length === 10) num = '91' + num; // assume India for 10-digit numbers
+        if (!num) { error.textContent = 'The clinic’s WhatsApp number is not set up yet. Please call the clinic instead.'; error.hidden = false; return; }
+        const email = $('#email').value.trim();
+        const text = [
+          'Hello Shadab Dental Care, I would like to request an appointment.', '',
+          `Name: ${$('#name').value.trim()}`, `Phone: ${$('#phone').value.trim()}`, ...(email ? [`Email: ${email}`] : []),
+          `Preferred time: ${fmtDate(dateInput.value)}, ${fmtTime(time.value)}`,
+          ...(reasonInput.value ? [`Reason: ${reasonInput.value}`] : []), `Details: ${concern.value.trim()}`
+        ].join('\n');
+        const url = `https://wa.me/${num}?text=${encodeURIComponent(text)}`;
+        summary.replaceChildren('✓ Your request is ready. WhatsApp should open — just press ', el('b', { text: 'Send' }), '. ',
+          el('a', { href: url, target: '_blank', rel: 'noopener', class: 'text-link', text: 'Tap here if it didn’t open ↗' }));
+        summary.hidden = false;
+        if (!window.open(url, '_blank')) location.href = url;
+        return;
+      }
       submit.disabled = true; submit.textContent = 'Booking your visit…';
       try {
         const data = await api('/api/appointments', {

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f5f4ef">
+<meta name="description" content="Request a dental appointment at Shadab Dental Care. Choose a day and time that suits you.">
+<title>Book an appointment | Shadab Dental Care</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="header"><div class="wrap">
+  <a class="brand" href="index.html" aria-label="Shadab Dental Care home"><svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="#163d36"/><path d="M10.6 11c2-1.7 4.2-.7 6.4.3 2.2-1 4.4-2 6.4-.3 2.2 1.9 1.6 5.8.6 8.6-.9 2.5-1.1 6.2-2.8 6.2-1.9 0-1.5-4.6-4.2-4.6s-2.3 4.6-4.2 4.6c-1.7 0-1.9-3.7-2.8-6.2-1-2.8-1.6-6.7.6-8.6z" fill="none" stroke="#f5f4ef" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Shadab <b>Dental Care</b></span></a>
+  <nav class="nav" id="nav" aria-label="Main"><a href="index.html">Home</a><a href="about.html">About</a><a href="index.html#visit">Hours &amp; contact</a><a href="booking.html" aria-current="page">Book</a><a data-mode="server" href="details.html">My appointment</a></nav>
+  <div class="header-actions"><a data-mode="server" class="button button-ghost button-sm header-cta" href="details.html">My appointment</a><button class="menu-toggle" type="button" aria-controls="nav" aria-expanded="false" aria-label="Open menu">☰</button></div>
+</div></header>
+
+<main id="main" class="subpage wrap">
+  <div class="breadcrumb"><a href="index.html">Home</a><span>/</span>Book an appointment</div>
+  <div class="subhead">
+    <div><div class="eyebrow">Your first step</div><h1>Let’s find a <em>time for you.</em></h1></div>
+    <p><span data-mode="server">Choose a day and an open time, then tell us a little about what brings you in. Your appointment is confirmed the moment you book.</span><span data-mode="whatsapp" hidden>Choose the day and time you prefer, then tell us a little about what brings you in. Your request opens in WhatsApp, and the clinic confirms your time there.</span></p>
+  </div>
+  <div id="scheduleNotice" class="notice" hidden><span data-mode="server"><b>Note for the clinic:</b> these are sample opening hours. Update them in <code>clinic.json</code> before sharing the site with patients.</span><span data-mode="whatsapp" hidden>The times shown are a guide. The clinic will confirm your exact time on WhatsApp.</span></div>
+
+  <div class="booking-grid">
+    <form id="bookingForm" class="card form-card" novalidate>
+      <div class="form-step" id="whenTitle"><span>1</span><div><h2>When would you like to come?</h2><p><span data-mode="server">Open times update live. </span><span data-mode="whatsapp" hidden>Pick your preferred time. </span>Book up to <span id="daysAhead">90</span> days ahead.</p></div></div>
+      <div class="field"><span class="footnote" style="margin:0 0 8px">Next open days</span><div class="chips" id="dayChips"><span class="footnote">Loading…</span></div></div>
+      <div class="field"><label for="date">Or pick any date <b>*</b></label><input id="date" name="date" type="date" required></div>
+      <fieldset class="field"><legend>Open times <b>*</b></legend><div id="slotList" class="slot-list" aria-live="polite"><p class="muted">Pick a day above to see open times.</p></div><input id="time" name="time" type="hidden"></fieldset>
+
+      <hr class="divider">
+      <div class="form-step"><span>2</span><div><h2>What brings you in?</h2><p>Optional — it helps us prepare for your visit.</p></div></div>
+      <div class="field">
+        <div class="chips" id="reasonChips" role="group" aria-label="Reason for visit">
+          <button type="button" class="chip" aria-pressed="false" data-reason="Check-up">Check-up</button>
+          <button type="button" class="chip" aria-pressed="false" data-reason="Cleaning">Cleaning</button>
+          <button type="button" class="chip" aria-pressed="false" data-reason="Tooth pain">Tooth pain</button>
+          <button type="button" class="chip" aria-pressed="false" data-reason="Sensitivity">Sensitivity</button>
+          <button type="button" class="chip" aria-pressed="false" data-reason="Broken or chipped tooth">Broken or chipped tooth</button>
+          <button type="button" class="chip" aria-pressed="false" data-reason="Gum concern">Gum concern</button>
+          <button type="button" class="chip" aria-pressed="false" data-reason="Cosmetic question">Cosmetic question</button>
+          <button type="button" class="chip" aria-pressed="false" data-reason="Child’s visit">Child’s visit</button>
+          <button type="button" class="chip" aria-pressed="false" data-reason="Second opinion">Second opinion</button>
+          <button type="button" class="chip" aria-pressed="false" data-reason="Something else">Something else</button>
+        </div>
+        <input type="hidden" id="reason" name="reason">
+      </div>
+      <div class="field"><label for="concern">Tell us a little more <b>*</b></label><textarea id="concern" name="concern" rows="4" minlength="5" maxlength="1200" required placeholder="e.g. “Sensitive tooth on the lower left for a week.” A short line is enough — please avoid highly sensitive medical details."></textarea><small><span id="charCount">0</span>/1200 characters</small></div>
+
+      <hr class="divider">
+      <div class="form-step"><span>3</span><div><h2>Your details</h2><p>We use these to identify your booking and reach you if needed.</p></div></div>
+      <div class="field"><label for="name">Full name <b>*</b></label><input id="name" name="name" autocomplete="name" minlength="2" maxlength="100" required placeholder="Name you’d like us to use"></div>
+      <div class="two-col">
+        <div class="field"><label for="phone">Phone number <b>*</b></label><input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" minlength="7" maxlength="30" pattern="\+?[0-9 \(\)\-]{7,25}" required placeholder="e.g. +91 98765 43210"><small><span data-mode="server">You’ll need this to look up your booking.</span><span data-mode="whatsapp" hidden>The clinic may call or message you on this number.</span></small></div>
+        <div class="field"><label for="email">Email <span style="font-weight:400;color:var(--soft)">(optional)</span></label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com"></div>
+      </div>
+      <label class="consent"><input type="checkbox" id="consent" required><span>I agree to share these details with Shadab Dental Care so they can arrange my appointment. <a href="about.html#privacy">How we handle your details</a>.</span></label>
+      <p class="summary" id="summary" hidden></p>
+      <div class="form-error" id="formError" role="alert" hidden></div>
+      <button class="button button-dark submit-button" type="submit"><span data-mode="server">Confirm appointment</span><span data-mode="whatsapp" hidden>Send request on WhatsApp</span> <span class="arrow">↗</span></button>
+      <p class="footnote" style="text-align:center"><span data-mode="server">You’ll get a booking reference instantly. No account needed.</span><span data-mode="whatsapp" hidden>This opens WhatsApp with your details ready to send. No account needed.</span></p>
+    </form>
+
+    <aside class="aside">
+      <div class="aside-card">
+        <span class="eyebrow">Before you arrive</span>
+        <h3>A little care, <em>before you arrive.</em></h3>
+        <p>Bring any questions you have, along with recent dental records and a list of medicines if you take any. Your first visit is a chance to talk through what you need.</p>
+        <a class="text-link" href="about.html#faq">Read the patient guide ↗</a>
+      </div>
+      <div class="card" style="padding:22px" data-c-any hidden>
+        <span class="eyebrow">Prefer to call?</span>
+        <ul class="contact-list" style="margin-top:8px">
+          <li data-c="phone"><span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span><div><small>Phone</small><a data-v href="#"></a></div></li>
+          <li data-c="address"><span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span><div><small>Address</small><span data-v></span></div></li>
+        </ul>
+      </div>
+      <p class="urgent"><b>Need urgent help?</b><br>This form isn’t monitored for emergencies. For severe pain, swelling or an injury, call the clinic or your local emergency services.</p>
+    </aside>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-main">
+    <div><a class="brand" href="index.html"><svg class="brand-mark" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="10" fill="#f1eee2"/><path d="M10.6 11c2-1.7 4.2-.7 6.4.3 2.2-1 4.4-2 6.4-.3 2.2 1.9 1.6 5.8.6 8.6-.9 2.5-1.1 6.2-2.8 6.2-1.9 0-1.5-4.6-4.2-4.6s-2.3 4.6-4.2 4.6c-1.7 0-1.9-3.7-2.8-6.2-1-2.8-1.6-6.7.6-8.6z" fill="none" stroke="#12332c" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Shadab <b>Dental Care</b></span></a><p class="footer-blurb">Gentle, unhurried dental care — with time for your questions.</p></div>
+    <div class="footer-col"><span class="footer-label">Explore</span><a href="about.html">About &amp; FAQ</a><a href="booking.html">Book an appointment</a><a data-mode="server" href="details.html">My appointment</a><a href="about.html#privacy">Privacy</a></div>
+    <div class="footer-col"><span class="footer-label">Visit</span><span data-c="address"></span><a data-c="phone" href="#"></a><a data-c="email" href="#"></a><span data-c-pending>Contact details coming soon</span></div>
+  </div>
+  <div class="wrap footer-bottom"><span>© <span data-year></span> Shadab Dental Care</span><span>Not for emergencies — in urgent cases call your local emergency number.</span></div>
+</footer>
+<script src="clinic-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

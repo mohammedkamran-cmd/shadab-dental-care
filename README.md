@@ -69,7 +69,19 @@ To choose your own key, start the server with `$env:ADMIN_KEY="your-long-secret"
 - Lookups and cancellations need **both** the reference and the phone number.
 - Basic per-IP rate limiting on booking, lookup and staff requests.
 
-## Put it online (free)
+## Put it online with GitHub Pages (free, WhatsApp booking)
+
+GitHub Pages has no server, so this version has no live slots or staff page. A booking opens WhatsApp with the
+patient's details filled in, addressed to the `whatsapp` number in `clinic.json`.
+
+1. Edit `clinic.json` (phone, WhatsApp number, hours, doctor...).
+2. Run `node build-static.js`. It rebuilds the `docs/` folder.
+3. `git add -A`, `git commit`, `git push`. GitHub Pages (Settings → Pages → branch `main`, folder `/docs`) updates within a minute or two.
+
+Your own domain (for example `shadabdentalcare.com`): buy it from a registrar, then set it under Settings → Pages → Custom domain
+and add the DNS records GitHub shows you.
+
+## Put it online with the full booking system (free)
 
 The site runs on **Render's free plan**, and bookings are kept in a free **Turso** database, so they survive restarts.
 `render.yaml` holds the whole Render setup.
